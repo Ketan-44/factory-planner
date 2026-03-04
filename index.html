@@ -277,6 +277,8 @@ function dispatchCheck(cell){
 
 if(cell.value=="Yes"){
 cell.parentElement.parentElement.classList.add("dispatched")
+} else {
+cell.parentElement.parentElement.classList.remove("dispatched")
 }
 
 saveJobs()
