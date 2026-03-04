@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Factory Production Planner</title>
+
+<style>
+
+body{
+font-family:Arial;
+margin:30px;
+}
+
+table{
+border-collapse:collapse;
+width:100%;
+margin-bottom:20px;
+}
+
+th,td{
+border:1px solid #999;
+padding:5px;
+font-size:12px;
+text-align:center;
+}
+
+th{
+background:#e6e6e6;
+}
+
+.dashboard{
+background:#eef6ff;
+padding:10px;
+margin-bottom:20px;
+border:1px solid #bbb;
+}
+
+.dispatched{
+background:#b7ffb7;
+}
+
+.bar{
+color:white;
+font-size:10px;
+font-weight:bold;
+}
+
+.dayline{
+border-right:3px solid black;
+}
+
+.machineRow{
+font-weight:bold;
+}
+
+.shift{
+background:#f5f5f5;
+font-size:11px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Factory Production System</h1>
+
+<div class="dashboard">
+
+Total Jobs: <span id="totalJobs">0</span> |
+QC Pending: <span id="qcPending">0</span> |
+Overdue Jobs: <span id="overdueJobs">0</span> |
+Machine Utilization: <span id="utilization">0</span> %
+
+</div>
+
+<h2>Job Tracking</h2>
+
+<table id="jobTable">
+
+<tr>
+<th>Sr</th>
+<th>Order</th>
+<th>Line</th>
+<th>Qty</th>
+<th>Route</th>
+<th>Material Acceptance</th>
+<th>Material Receipt</th>
+<th>UID</th>
+<th>Target</th>
+<th>QC Call</th>
+<th>QC Clearance</th>
+<th>QC By</th>
+<th>Dispatch</th>
+<th>Remarks</th>
+</tr>
+
+</table>
+
+<button onclick="addJob()">Add Job</button>
+
+<hr>
+
+<h2>Machine Weekly Planner</h2>
+
+Year
+<input id="year" type="number" value="2026">
+
+Month
+<input id="month" value="March">
+
+Week
+<input id="week" type="number" value="1">
+
+Machine Filter
+
+<select id="machineFilter" onchange="generatePlanner()">
+
+<option value="All">All</option>
+<option>VMC-1 AC-1000</option>
+<option>VMC-2 AC-1000</option>
+<option>VMC-3 J-800</option>
+<option>VMC-4 J-800</option>
+<option>VMC-5 J-800</option>
+<option>VMC-6 J-800</option>
+<option>VMC-7 J-800</option>
+<option>HL-1 T=2200</option>
+<option>HL-2 T=2200</option>
+<option>HL-3 LM500</option>
+<option>HL-4 LM500</option>
+<option>BANDSAW</option>
+
+</select>
+
+<br><br>
+
+<table id="scheduleInput">
+
+<tr>
+<th>Machine</th>
+<th>Job</th>
+<th>Day</th>
+<th>Shift</th>
+<th>Start</th>
+<th>End</th>
+</tr>
+
+<tr>
+
+<td>
+<select>
+<option>VMC-1 AC-1000</option>
+<option>VMC-2 AC-1000</option>
+<option>VMC-3 J-800</option>
+<option>VMC-4 J-800</option>
+<option>VMC-5 J-800</option>
+<option>VMC-6 J-800</option>
+<option>VMC-7 J-800</option>
+<option>HL-1 T=2200</option>
+<option>HL-2 T=2200</option>
+<option>HL-3 LM500</option>
+<option>HL-4 LM500</option>
+<option>BANDSAW</option>
+</select>
+</td>
+
+<td contenteditable="true"></td>
+
+<td>
+<select>
+<option>Monday</option>
+<option>Tuesday</option>
+<option>Wednesday</option>
+<option>Thursday</option>
+<option>Friday</option>
+<option>Saturday</option>
+<option>Sunday</option>
+</select>
+</td>
+
+<td>
+<select>
+<option>1</option>
+<option>2</option>
+<option>3</option>
+</select>
+</td>
+
+<td contenteditable="true"></td>
+<td contenteditable="true"></td>
+
+</tr>
+
+</table>
+
+<button onclick="addSchedule()">Add Schedule</button>
+<button onclick="generatePlanner()">Generate Planner</button>
+<button onclick="exportPlanner()">Export Planner</button>
+
+<h3>Weekly Planner</h3>
+
+<table id="planner"></table>
+
+<script>
+
+let machines=[
+"VMC-1 AC-1000","VMC-2 AC-1000","VMC-3 J-800","VMC-4 J-800",
+"VMC-5 J-800","VMC-6 J-800","VMC-7 J-800",
+"HL-1 T=2200","HL-2 T=2200","HL-3 LM500","HL-4 LM500","BANDSAW"
+]
+
+let days=[
+"Monday","Tuesday","Wednesday","Thursday",
+"Friday","Saturday","Sunday"
+]
+
+let machineColor={
+"VMC-1 AC-1000":"#1abc9c",
+"VMC-2 AC-1000":"#3498db",
+"VMC-3 J-800":"#9b59b6",
+"VMC-4 J-800":"#e67e22",
+"VMC-5 J-800":"#e74c3c",
+"VMC-6 J-800":"#2ecc71",
+"VMC-7 J-800":"#f39c12",
+"HL-1 T=2200":"#16a085",
+"HL-2 T=2200":"#2980b9",
+"HL-3 LM500":"#8e44ad",
+"HL-4 LM500":"#d35400",
+"BANDSAW":"#7f8c8d"
+}
+
+function addJob(){
+
+let table=document.getElementById("jobTable")
+let sr=table.rows.length
+let row=table.insertRow()
+
+row.innerHTML=`
+
+<td>${sr}</td>
+<td contenteditable="true"></td>
+<td contenteditable="true"></td>
+<td contenteditable="true"></td>
+<td contenteditable="true"></td>
+
+<td>
+<select>
+<option>No</option>
+<option>Yes</option>
+</select>
+</td>
+
+<td><input type="date"></td>
+<td contenteditable="true"></td>
+<td><input type="date"></td>
+<td><input type="date"></td>
+<td><input type="date"></td>
+<td contenteditable="true"></td>
+
+<td>
+<select onchange="dispatchCheck(this)">
+<option>No</option>
+<option>Yes</option>
+</select>
+</td>
+
+<td contenteditable="true"></td>
+
+`
+
+saveJobs()
+
+}
+
+function dispatchCheck(cell){
+
+if(cell.value=="Yes"){
+cell.parentElement.parentElement.classList.add("dispatched")
+}
+
+saveJobs()
+
+}
+
+function saveJobs(){
+localStorage.setItem("jobTracking",document.getElementById("jobTable").innerHTML)
+}
+
+function loadJobs(){
+
+let data=localStorage.getItem("jobTracking")
+
+if(data){
+document.getElementById("jobTable").innerHTML=data
+}
+
+}
+
+document.addEventListener("input",saveJobs)
+
+loadJobs()
+
+function addSchedule(){
+
+let table=document.getElementById("scheduleInput")
+let row=table.insertRow()
+
+row.innerHTML=table.rows[1].innerHTML
+
+}
+
+function hourConvert(day,shift,hour){
+
+let d=days.indexOf(day)
+
+return (d*24)+((shift-1)*8)+hour
+
+}
+
+function generatePlanner(){
+
+let planner=document.getElementById("planner")
+planner.innerHTML=""
+
+let header1="<tr><th rowspan='3'>Machine</th>"
+days.forEach(d=>{ header1+="<th colspan='24'>"+d+"</th>" })
+header1+="</tr>"
+
+let header2="<tr>"
+for(let i=0;i<7;i++){
+header2+="<th colspan='8' class='shift'>Shift1</th>"
+header2+="<th colspan='8' class='shift'>Shift2</th>"
+header2+="<th colspan='8' class='shift'>Shift3</th>"
+}
+header2+="</tr>"
+
+let header3="<tr>"
+for(let i=1;i<=168;i++){
+if(i%24==0)
+header3+="<th class='dayline'>"+i+"</th>"
+else
+header3+="<th>"+i+"</th>"
+}
+header3+="</tr>"
+
+planner.innerHTML+=header1+header2+header3
+
+let rows=document.getElementById("scheduleInput").rows
+
+let jobs=[]
+
+for(let i=1;i<rows.length;i++){
+
+let machine=rows[i].cells[0].querySelector("select").value
+let job=rows[i].cells[1].innerText
+let day=rows[i].cells[2].querySelector("select").value
+let shift=parseInt(rows[i].cells[3].querySelector("select").value)
+let start=parseInt(rows[i].cells[4].innerText)
+let end=parseInt(rows[i].cells[5].innerText)
+
+jobs.push({
+machine,
+job,
+start:hourConvert(day,shift,start),
+end:hourConvert(day,shift,end)
+})
+
+}
+
+let totalHours=machines.length*168
+let used=0
+
+machines.forEach(machine=>{
+
+let row="<tr class='machineRow'><td>"+machine+"</td>"
+
+for(let h=1;h<=168;h++){
+
+let cell=""
+
+jobs.forEach(j=>{
+
+if(j.machine==machine && h>=j.start && h<=j.end){
+
+cell="<td class='bar' style='background:"+machineColor[machine]+"'>"+j.job+"</td>"
+used++
+
+}
+
+})
+
+if(cell=="") cell="<td></td>"
+
+row+=cell
+
+}
+
+row+="</tr>"
+
+planner.innerHTML+=row
+
+})
+
+let util=Math.round((used/totalHours)*100)
+
+document.getElementById("utilization").innerText=util
+
+}
+
+function exportPlanner(){
+
+let html=document.getElementById("planner").outerHTML
+let url='data:application/vnd.ms-excel,'+escape(html)
+
+let link=document.createElement("a")
+link.href=url
+link.download="WeeklyPlanner.xls"
+link.click()
+
+}
+
+</script>
+
+</body>
+
+</html>
